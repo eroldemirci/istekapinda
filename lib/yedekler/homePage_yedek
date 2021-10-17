@@ -1,0 +1,470 @@
+import 'dart:convert';
+
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:deneme_yeni_istekapinda/Pages/homePageBody.dart';
+
+import 'package:deneme_yeni_istekapinda/Pages/products.dart';
+import 'package:deneme_yeni_istekapinda/Pages/userProfile.dart';
+import 'package:deneme_yeni_istekapinda/controllers/homepage_controller.dart';
+
+import 'package:deneme_yeni_istekapinda/models/loginApi.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get/get.dart';
+
+import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+
+import 'package:deneme_yeni_istekapinda/models/homePageApi.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:deneme_yeni_istekapinda/main.dart';
+import 'cartList.dart';
+
+import 'loginPage.dart';
+
+class MyHomePage extends StatefulWidget {
+  MyHomePage({Key key}) : super(key: key);
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  HomePageController _controller = Get.put(HomePageController());
+  var userData;
+  bool _isLoggedIn = false;
+  var userJson;
+
+  GlobalKey<ScaffoldState> _scaffoldKey;
+
+  void initState() {
+    super.initState();
+    _checkIfLoggedIn();
+    _getUserInfo();
+  }
+
+  Future<HomePageApi> _bilgileriGetir() async {
+    var response = await CallApi().getHomePage();
+    var body = json.decode(response.body);
+    print(body);
+
+    if (response.statusCode == 200) {
+      return HomePageApi.fromJson(body);
+    } else
+      throw Exception('Bağlantıda Hata oluştu  ${response.statusCode}');
+  }
+
+  void logout() async {
+    // logout from the server ...
+    var res = await CallApi().getData('/api/logout');
+    var body = json.decode(res.body);
+
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    localStorage.remove('user');
+    localStorage.remove('token');
+
+    setState(() {
+      _isLoggedIn = false;
+    });
+
+    Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+            builder: (context) => MyStatefulWidget(
+                  isLoggedIn: false,
+                )),
+        (Route<dynamic> route) => false);
+    print('Çıkış Yapıldı');
+  }
+
+  Future<String> _getUserInfo() async {
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var user;
+    userJson = localStorage.getString('user');
+    if (userJson != null) {
+      setState(() {
+        user = json.decode(userJson);
+        userData = user;
+      });
+    }
+  }
+
+  void _checkIfLoggedIn() async {
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var token = localStorage.getString('token');
+
+    if (token != null) {
+      setState(() {
+        _isLoggedIn = true;
+      });
+      print(token);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: appBarMyHomePage(context),
+      drawer: _isLoggedIn
+          ? isLoggedInProfileDrawer()
+          : isNotLoggedInProfileDrawer(),
+      body: buildBody(context),
+    );
+  }
+
+  AppBar appBarMyHomePage(BuildContext context) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.green,
+      toolbarHeight: 40,
+      title: Text(
+        'Online Süpermarket',
+        style: TextStyle(fontSize: 18),
+      ),
+      centerTitle: true,
+      actions: [
+        !_isLoggedIn
+            ? PopupMenuButton(
+                icon: Icon(Icons.person),
+                itemBuilder: (BuildContext bc) => [
+                  PopupMenuItem(
+                      height: 35,
+                      child: Text("Giriş / Kayıt"),
+                      value: "/login"),
+                ],
+                onSelected: (route) {
+                  Navigator.push(
+                    context,
+                    new MaterialPageRoute(
+                      builder: (context) => LoginScreen(),
+                    ),
+                  );
+                },
+              )
+            : IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    new MaterialPageRoute(
+                      builder: (context) => CartList(),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.shopping_cart),
+              ),
+      ],
+    );
+  }
+
+  Drawer isLoggedInProfileDrawer() {
+    return Drawer(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(color: Colors.greenAccent),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 100,
+                        width: 100,
+                        decoration: BoxDecoration(
+                            image: DecorationImage(
+                                image: AssetImage('assets/images/malbatu.png'),
+                                fit: BoxFit.fill),
+                            shape: BoxShape.circle),
+                      ),
+                      Column(
+                        children: [
+                          Text(
+                            userData['name'],
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            userData['email'],
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              ListTile(
+                onTap: () {},
+                leading: Icon(Icons.person),
+                title: Text('Profil'),
+              ),
+              ListTile(
+                onTap: () {},
+                leading: Icon(Icons.settings),
+                title: Text('Ayarlar'),
+              ),
+            ],
+          ),
+          ListTile(
+            onTap: () => logout(),
+            leading: Icon(Icons.arrow_back),
+            title: Text(
+              'Oturumu Kapat',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Drawer isNotLoggedInProfileDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(color: Colors.greenAccent),
+                child: Center(
+                    child: Container(
+                  height: 130,
+                  width: 130,
+                  child: CircleAvatar(
+                    child: Icon(
+                      Icons.person,
+                      size: 80,
+                    ),
+                  ),
+                )),
+              ),
+              ListTile(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => LoginScreen())),
+                leading: Icon(Icons.person),
+                title: Text(
+                  'Giriş / Kayıt',
+                  style: TextStyle(color: Colors.greenAccent),
+                ),
+              ),
+              ListTile(
+                onTap: () => logout(),
+                leading: Icon(Icons.settings),
+                title: Text('Ayarlar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  ListView buildBody(BuildContext context) {
+    return ListView(
+      shrinkWrap: true,
+      children: [
+        Container(
+            // margin: EdgeInsets.only(top: 5),
+            height: MediaQuery.of(context).size.height * 0.35,
+            child: futureCarouselBuilder()),
+        Padding(
+          padding: const EdgeInsets.all(18.0),
+          child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                'Tüm Kampanyalarımız',
+                style: Theme.of(context).textTheme.headline5,
+              )),
+        ),
+        Container(
+          child: FutureBuilder(
+            future: _bilgileriGetir(),
+            builder: (context, AsyncSnapshot<HomePageApi> snapshot) {
+              if (snapshot.hasData) {
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: snapshot.data.products.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      childAspectRatio: 0.75,
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10),
+                  itemBuilder: (context, index) => GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      new MaterialPageRoute(
+                        builder: (context) => ProductDetailPage(
+                          urunId: snapshot.data.products[index].id,
+                        ),
+                      ),
+                    ),
+                    child: Card(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(5.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(5)),
+                                      color: Colors.red[600],
+                                    ),
+                                    child: Text(
+                                      '% ${(double.parse(snapshot.data.products[index].discount)).toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      print(snapshot.data.products[index].name +
+                                          'favorilere eklendi');
+                                    },
+                                    child: Icon(
+                                      Icons.favorite_border,
+                                      size: 30,
+                                      color: Colors.greenAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 6,
+                            child: Container(
+                              child: Image.network(
+                                snapshot.data.products[index].imagePath,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.15,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.all(5),
+                              child: Text(
+                                  '${snapshot.data.products[index].name}',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 14)),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                      '₺${snapshot.data.products[index].salePrice}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                          decorationColor: Colors.black,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500)),
+                                  SizedBox(
+                                    width: 10,
+                                  ),
+                                  Text(
+                                      '₺${(double.parse(snapshot.data.products[index].salePrice) - (double.parse(snapshot.data.products[index].salePrice) * double.parse(snapshot.data.products[index].discount) / 100)).toStringAsFixed(2)}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Container(
+                              padding: const EdgeInsets.only(
+                                  bottom: 10, right: 10, left: 10),
+                              child: MaterialButton(
+                                minWidth:
+                                    MediaQuery.of(context).size.width * 0.5,
+                                color: Colors.greenAccent,
+                                onPressed: () => {
+                                  Fluttertoast.showToast(
+                                      msg:
+                                          "Ürün ID : ${snapshot.data.products[index].id} Sepete Eklendi",
+                                      toastLength: Toast.LENGTH_LONG,
+                                      gravity: ToastGravity.BOTTOM,
+                                      timeInSecForIosWeb: 1,
+                                      backgroundColor: Colors.greenAccent,
+                                      textColor: Colors.white,
+                                      fontSize: 16.0)
+                                },
+                                child: Text(
+                                  'Sepete Ekle',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              } else
+                return Center(child: CircularProgressIndicator());
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  FutureBuilder<HomePageApi> futureCarouselBuilder() {
+    return FutureBuilder(
+      future: _bilgileriGetir(),
+      builder: (BuildContext context, AsyncSnapshot<HomePageApi> snapshot) {
+        if (snapshot.hasData) {
+          return CarouselSlider.builder(
+            itemCount: snapshot.data.slides.length,
+            itemBuilder: (context, index, realIndex) {
+              return Container(
+                child: Image.network(
+                  snapshot.data.slides[index].imagePath,
+                  fit: BoxFit.fill,
+                ),
+              );
+            },
+            options: CarouselOptions(
+              autoPlayInterval: Duration(seconds: 6),
+              height: MediaQuery.of(context).size.height * 1,
+              autoPlay: true,
+              viewportFraction: 1,
+              enlargeCenterPage: false,
+            ),
+          );
+        } else
+          return Center(
+            child: CircularProgressIndicator(
+              backgroundColor: Colors.greenAccent,
+            ),
+          );
+      },
+    );
+  }
+}

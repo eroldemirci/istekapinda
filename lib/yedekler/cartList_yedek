@@ -1,0 +1,655 @@
+import 'dart:convert';
+
+import 'package:deneme_yeni_istekapinda/controllers/isLoggedin_controller.dart';
+import 'package:get/get.dart';
+
+import 'loginPage.dart';
+import '../models/loginApi.dart';
+import '../models/userCartList_model.dart';
+
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class CartList extends StatefulWidget {
+  CartList({Key key}) : super(key: key);
+
+  @override
+  _CartListState createState() => _CartListState();
+}
+
+class _CartListState extends State<CartList> {
+  int itemcount = 1;
+  double fiyat = 16.75;
+
+  AuthController authController = Get.find();
+  void initState() {
+    super.initState();
+    getCartListData();
+  }
+
+  Future<void> logout() async {
+    await CallApi().getData('/api/logout');
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var token = localStorage.getString('token');
+    if (token != null) {
+      localStorage.remove('token');
+    }
+    Get.off(LoginScreen());
+    // Get.offNamedUntil('/', (route) => false);
+  }
+
+  Future<UserCartList> getCartListData() async {
+    var response = await CallApi().getCartList();
+    var body = json.decode(response.body);
+    print(body);
+
+    if (response.statusCode == 200) {
+      UserCartList gelenData =
+          UserCartList.fromJson(json.decode(response.body));
+
+      return gelenData;
+    } else if (response.statusCode == 421) {
+      logout();
+      print('Çıkış Yapıldı');
+    } else
+      throw Exception('Bağlantıda Hata oluştu  ${response.statusCode}');
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: MyAppBar(),
+      bottomNavigationBar: FutureBuilder(
+          future: getCartListData(),
+          builder: (context, AsyncSnapshot<UserCartList> snapshot) {
+            if (snapshot.hasData) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey,
+                      offset: Offset(0.0, 2.0), //(x,y)
+                      blurRadius: 8.0,
+                    ),
+                  ],
+                ),
+                height: MediaQuery.of(context).size.height * 0.10,
+                padding: EdgeInsets.all(10),
+                margin: EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'Toplam Tutar : ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '${snapshot.data.total} ₺',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.greenAccent[400],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: InkWell(
+                        onTap: () => null,
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            color: Colors.greenAccent[400],
+                          ),
+                          child: Text(
+                            'Sipariş Ver',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              return LinearProgressIndicator();
+            }
+          }),
+      body: FutureBuilder(
+        future: getCartListData(),
+        builder: (context, AsyncSnapshot<UserCartList> snapshot) {
+          if (snapshot.hasData) {
+            return ListView(
+              children: [
+                Container(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: ScrollPhysics(),
+                    itemCount: snapshot.data.carts.length,
+                    itemBuilder: (BuildContext context, index) {
+                      return GestureDetector(
+                        child: Container(
+                          margin: EdgeInsets.only(right: 15, left: 15, top: 5),
+                          height: MediaQuery.of(context).size.height * 0.11,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(0),
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey,
+                                offset: Offset(0.0, 1.0), //(x,y)
+                                blurRadius: 1.0,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(5.0),
+                                  child: Container(
+                                      child: Image.network(
+                                          '${snapshot.data.products[index].imagePath}')),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 8,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 7,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 10.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: Text(
+                                                '${snapshot.data.products[index].name}',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                textAlign: TextAlign.left,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Row(
+                                                children: [
+                                                  Text(
+                                                    'Fiyat : ',
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '${snapshot.data.carts[index].total} ₺',
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 5,
+                                      child: Container(
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: IconButton(
+                                                  icon: Icon(
+                                                    Icons.remove_circle_outline,
+                                                    color:
+                                                        Colors.greenAccent[400],
+                                                  ),
+                                                  onPressed: () => null),
+                                            ),
+                                            Expanded(
+                                              flex: 6,
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceAround,
+                                                children: [
+                                                  Text('adet'),
+                                                  Container(
+                                                    margin: EdgeInsets.only(
+                                                        bottom: 30),
+                                                    height: 30,
+                                                    child: TextFormField(
+                                                      onEditingComplete: () {
+                                                        print('anan');
+                                                      },
+                                                      onFieldSubmitted:
+                                                          (value) {
+                                                        print(
+                                                            'HassanaBasan $value');
+                                                      },
+                                                      keyboardType:
+                                                          TextInputType.number,
+                                                      decoration:
+                                                          InputDecoration(
+                                                        fillColor: Colors.white,
+                                                        filled: true,
+                                                        border:
+                                                            OutlineInputBorder(
+                                                          borderSide:
+                                                              BorderSide(
+                                                                  color: Colors
+                                                                      .white),
+                                                        ),
+                                                        labelStyle: TextStyle(
+                                                            color: Colors
+                                                                    .greenAccent[
+                                                                400]),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: IconButton(
+                                                  icon: Icon(
+                                                    Icons.add_circle_outline,
+                                                    color:
+                                                        Colors.greenAccent[400],
+                                                  ),
+                                                  onPressed: () => null),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  child: IconButton(
+                                    onPressed: () {},
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: Colors.redAccent[400],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
+    );
+  }
+
+  Container bottomNavBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey,
+            offset: Offset(0.0, 2.0), //(x,y)
+            blurRadius: 8.0,
+          ),
+        ],
+      ),
+      height: MediaQuery.of(context).size.height * 0.10,
+      padding: EdgeInsets.all(10),
+      margin: EdgeInsets.all(8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              'Toplam Tutar : ',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '${fiyat * itemcount} ₺',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.greenAccent[400],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 6,
+            child: InkWell(
+              onTap: () => null,
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  color: Colors.greenAccent[400],
+                ),
+                child: Text(
+                  'Sipariş Ver',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  AppBar MyAppBar() {
+    return AppBar(
+      iconTheme: IconThemeData(color: Colors.black),
+      title: Text(
+        'Sepetteki Ürünler',
+        style: TextStyle(color: Colors.black),
+      ),
+      backgroundColor: Colors.white,
+      elevation: 1,
+      centerTitle: true,
+    );
+  }
+
+  ListView buildBody(BuildContext context) {
+    return ListView(
+      children: [
+        Container(
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: ScrollPhysics(),
+            itemCount: 1,
+            itemBuilder: (BuildContext context, index) {
+              return Container(
+                margin: EdgeInsets.only(right: 15, left: 15, top: 5),
+                height: MediaQuery.of(context).size.height * 0.15,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey,
+                      offset: Offset(0.0, 2.0), //(x,y)
+                      blurRadius: 1.0,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: Container(
+                          child: Image.asset(
+                            'assets/images/ornekUrun.png',
+                            fit: BoxFit.fill,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 8,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 8,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text(
+                                      'Altıncezve 3Ü1 Arada Poşet (250 g)',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      textAlign: TextAlign.left,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          'Fiyat : ',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                          '$fiyat ₺',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 5,
+                            child: Container(
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        itemcount > 0 ? itemcount-- : null;
+                                      });
+                                    },
+                                    child: Container(
+                                      child: Icon(Icons.remove),
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey[400],
+                                          offset: Offset(0.0, 1.0), //(x,y)
+                                          blurRadius: 3.0,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text('$itemcount'),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        itemcount++;
+                                      });
+                                    },
+                                    child: Container(
+                                      child: Icon(Icons.add),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        child: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              itemcount = 0;
+                            });
+                          },
+                          icon: Icon(
+                            Icons.delete,
+                            color: Colors.greenAccent[400],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/* 
+  Container(
+          child: FutureBuilder(
+              builder: (context, AsyncSnapshot<UserCartList> snapshot) {
+            if (snapshot.hasData) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey,
+                      offset: Offset(0.0, 2.0), //(x,y)
+                      blurRadius: 8.0,
+                    ),
+                  ],
+                ),
+                height: MediaQuery.of(context).size.height * 0.1,
+                padding: EdgeInsets.all(10),
+                margin: EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'Toplam Tutar : ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '${snapshot.data.total} ₺',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.greenAccent[400],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: InkWell(
+                        onTap: () => null,
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            color: Colors.greenAccent[400],
+                          ),
+                          child: Text(
+                            'Sipariş Ver',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+          }),
+        ),
+ */

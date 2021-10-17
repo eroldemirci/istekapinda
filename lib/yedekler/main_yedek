@@ -1,0 +1,218 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:deneme_yeni_istekapinda/Pages/favorites.dart';
+import 'package:deneme_yeni_istekapinda/Pages/loginPage.dart';
+import 'package:deneme_yeni_istekapinda/Pages/userProfile.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'Pages/campaigns.dart';
+import 'Pages/cartList.dart';
+import 'Pages/homePage.dart';
+import 'Pages/homePageBody.dart';
+
+void main() async {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Online Süpermarket',
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: SplashScreen(),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    Timer(
+        Duration(seconds: 3),
+        () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (BuildContext context) => MyHomePage())));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.greenAccent[400],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            CircleAvatar(
+              radius: 70,
+              backgroundColor: Colors.white,
+              child: Icon(
+                Icons.shopping_cart_sharp,
+                size: 64,
+                color: Colors.greenAccent[400],
+              ),
+            ),
+            Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 10),
+                Text(
+                  'İstekapında Hemen Yanında',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                )
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MyBottomNavBar extends StatefulWidget {
+  @override
+  _MyBottomNavBarState createState() => _MyBottomNavBarState();
+}
+
+class _MyBottomNavBarState extends State<MyBottomNavBar> {
+  var userData;
+  bool _isLoggedIn = false;
+  var userJson;
+
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserInfo();
+    _checkIfLoggedIn();
+    anasayfa = MyHomePage(
+      key: keyHomePage,
+    );
+    kampanyalar = CampaignsPage(
+      key: keyCampaignPage,
+    );
+    sepetim = CartList(
+      key: keyCartList,
+    );
+    favoriler = Favorites(
+      key: keyFavorites,
+    );
+    profil = UserProfile(
+      key: keyProfile,
+    );
+    tumSayfalar = [anasayfa, kampanyalar, sepetim, favoriler, profil];
+  }
+
+  Future<String> _getUserInfo() async {
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var user;
+    userJson = localStorage.getString('user');
+    if (userJson != null) {
+      setState(() {
+        user = json.decode(userJson);
+        userData = user;
+      });
+    }
+  }
+
+  void _checkIfLoggedIn() async {
+    // check if token is there
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var token = localStorage.getString('token');
+
+    if (token != null) {
+      setState(() {
+        _isLoggedIn = true;
+      });
+    }
+  }
+
+  int _currentIndex = 0;
+
+  List<Widget> tumSayfalar;
+  MyHomePage anasayfa;
+  CampaignsPage kampanyalar;
+  CartList sepetim;
+  Favorites favoriler;
+  UserProfile profil;
+
+  var keyHomePage = PageStorageKey('homePage_key');
+  var keyCampaignPage = PageStorageKey('campaignPage_key');
+  var keyCartList = PageStorageKey('cartList_key');
+  var keyFavorites = PageStorageKey('favorites_key');
+  var keyProfile = PageStorageKey('profil_key');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: tumSayfalar[_currentIndex],
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.all(Radius.circular(50)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey,
+                offset: Offset(0.0, 2.0), //(x,y)
+                blurRadius: 5.0,
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            onTap: onTappedBar,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            currentIndex: _currentIndex,
+            iconSize: 27,
+            unselectedItemColor: Colors.black,
+            selectedItemColor: Colors.greenAccent[400],
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
+            items: [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.storefront_outlined),
+                title: Text('AnaSayfa'),
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.campaign_sharp),
+                title: Text('Kampanyalar'),
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.add_shopping_cart_sharp),
+                title: Text('Sepetim'),
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.favorite_border),
+                title: Text('Favoriler'),
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                title: Text('Profil'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void onTappedBar(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+}

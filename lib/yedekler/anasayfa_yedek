@@ -1,0 +1,392 @@
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:deneme_yeni_istekapinda/Pages/products.dart';
+
+import '../commonWidgets/productCard.dart';
+import '../controllers/homepage_controller.dart';
+
+import '../services/response_services.dart';
+
+import 'package:get/get.dart';
+
+import 'package:flutter/material.dart';
+
+import 'loginPage.dart';
+
+class MyHomePage extends StatefulWidget {
+  MyHomePage({Key key}) : super(key: key);
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  HomePageController _controller = Get.put(HomePageController());
+  var userData;
+  bool _isLoggedIn = false;
+  var userJson;
+
+  ServiceResponse services = new ServiceResponse();
+
+  // void _checkIfLoggedIn() async {
+  //   http.Response response = await ServiceResponse().getData('/api/user-auth');
+
+  //   if (response.statusCode == 200) {
+  //     setState(() {
+  //       _isLoggedIn = true;
+  //     });
+  //   } else
+  //     _isLoggedIn = false;
+  // }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _checkIfLoggedIn();
+  //   print('initstate homepage');
+  // }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: PageStorageKey('key_ana_sayfa'),
+      appBar: appBarMyHomePage(context),
+      body: buildBody(context),
+    );
+  }
+
+  AppBar appBarMyHomePage(BuildContext context) {
+    return AppBar(
+      elevation: 5,
+      toolbarHeight: MediaQuery.of(context).size.height * 0.08,
+      title: Text(
+        'Online Süpermarket',
+        style: TextStyle(fontSize: 18, color: Colors.white),
+      ),
+      centerTitle: true,
+    );
+  }
+
+  Drawer isLoggedInProfileDrawer() {
+    return Drawer(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(color: Colors.greenAccent),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 100,
+                        width: 100,
+                        decoration: BoxDecoration(
+                            image: DecorationImage(
+                                image: AssetImage('assets/images/malbatu.png'),
+                                fit: BoxFit.fill),
+                            shape: BoxShape.circle),
+                      ),
+                      Column(
+                        children: [
+                          Text(
+                            userData['name'],
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            userData['email'],
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              ListTile(
+                onTap: () {},
+                leading: Icon(Icons.person),
+                title: Text('Profil'),
+              ),
+              ListTile(
+                onTap: () {},
+                leading: Icon(Icons.settings),
+                title: Text('Ayarlar'),
+              ),
+            ],
+          ),
+          ListTile(
+            onTap: () => services.logout(),
+            leading: Icon(Icons.arrow_back),
+            title: Text(
+              'Oturumu Kapat',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Drawer isNotLoggedInProfileDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(color: Colors.greenAccent),
+                child: Center(
+                    child: Container(
+                  height: 130,
+                  width: 130,
+                  child: CircleAvatar(
+                    child: Icon(
+                      Icons.person,
+                      size: 80,
+                    ),
+                  ),
+                )),
+              ),
+              ListTile(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => LoginScreen())),
+                leading: Icon(Icons.person),
+                title: Text(
+                  'Giriş / Kayıt',
+                  style: TextStyle(color: Colors.greenAccent),
+                ),
+              ),
+              ListTile(
+                onTap: () => services.logout(),
+                leading: Icon(Icons.settings),
+                title: Text('Ayarlar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildBody(BuildContext context) {
+    return GetBuilder<HomePageController>(
+        init: HomePageController(),
+        builder: (_controller) {
+          return _controller.isLoading.value == true
+              ? Center(
+                  child: CircularProgressIndicator(),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Slider Bölümü
+                      Container(
+                          height: MediaQuery.of(context).size.height * 0.30,
+                          child: CarouselSlider.builder(
+                            itemCount:
+                                _controller.gelenVeri.value.slides.length,
+                            itemBuilder: (context, index, realIndex) {
+                              return Container(
+                                child: Image.network(
+                                  _controller
+                                      .gelenVeri.value.slides[index].imagePath,
+                                  fit: BoxFit.fill,
+                                ),
+                              );
+                            },
+                            options: CarouselOptions(
+                              autoPlayAnimationDuration:
+                                  Duration(milliseconds: 300),
+                              autoPlayInterval: Duration(seconds: 6),
+                              height: MediaQuery.of(context).size.height * 1,
+                              autoPlay: true,
+                              viewportFraction: 1,
+                              enlargeCenterPage: false,
+                            ),
+                          )),
+                      // Kategoriler Bölümü
+                      Container(
+                          child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: _controller.gelenVeri.value.products.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            childAspectRatio: 0.8,
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10),
+                        itemBuilder: (context, index) => GestureDetector(
+                          onTap: () => Get.to(ProductDetailPage(
+                            urunId:
+                                _controller.gelenVeri.value.products[index].id,
+                          )),
+                          child: CustomProductCard(
+                            id: _controller.gelenVeri.value.products[index].id,
+                            imagePath: _controller
+                                .gelenVeri.value.products[index].imagePath,
+                            name: _controller
+                                .gelenVeri.value.products[index].name,
+                            discount: (double.parse(_controller
+                                    .gelenVeri.value.products[index].discount))
+                                .toStringAsFixed(0),
+                            salePrice: _controller
+                                .gelenVeri.value.products[index].salePrice,
+                            price: (double.parse(_controller.gelenVeri.value
+                                        .products[index].salePrice) -
+                                    (double.parse(_controller.gelenVeri.value
+                                            .products[index].salePrice) *
+                                        double.parse(_controller.gelenVeri.value
+                                            .products[index].discount) /
+                                        100))
+                                .toStringAsFixed(2),
+                          ),
+                        ),
+
+                        // GestureDetector(
+                        //   onTap: () => Navigator.push(
+                        //     context,
+                        //     new MaterialPageRoute(
+                        //       builder: (context) => ProductDetailPage(
+                        //         urunId:
+                        //             _controller.gelenVeri.value.products[index].id,
+                        //       ),
+                        //     ),
+                        //   ),
+                        //   child: Card(
+                        //     child: Column(
+                        //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        //       children: [
+                        //         Expanded(
+                        //           flex: 2,
+                        //           child: Padding(
+                        //             padding: const EdgeInsets.all(5.0),
+                        //             child: Row(
+                        //               mainAxisAlignment:
+                        //                   MainAxisAlignment.spaceBetween,
+                        //               children: [
+                        //                 Container(
+                        //                   padding: EdgeInsets.all(2),
+                        //                   decoration: BoxDecoration(
+                        //                     borderRadius:
+                        //                         BorderRadius.all(Radius.circular(5)),
+                        //                     color: Colors.red,
+                        //                   ),
+                        //                   child: Text(
+                        //                     '% ${(double.parse(_controller.gelenVeri.value.products[index].discount)).toStringAsFixed(0)}',
+                        //                     style: TextStyle(
+                        //                       color: Colors.white,
+                        //                     ),
+                        //                   ),
+                        //                 ),
+                        //                 GestureDetector(
+                        //                   onTap: () {
+                        //                     print(_controller.gelenVeri.value
+                        //                             .products[index].name +
+                        //                         'favorilere eklendi');
+                        //                   },
+                        //                   child: Icon(
+                        //                     Icons.favorite_border,
+                        //                     size: 30,
+                        //                     color: Colors.greenAccent,
+                        //                   ),
+                        //                 ),
+                        //               ],
+                        //             ),
+                        //           ),
+                        //         ),
+                        //         Expanded(
+                        //           flex: 6,
+                        //           child: Container(
+                        //             child: Image.network(
+                        //               _controller
+                        //                   .gelenVeri.value.products[index].imagePath,
+                        //               filterQuality: FilterQuality.low,
+                        //               height:
+                        //                   MediaQuery.of(context).size.height * 0.15,
+                        //             ),
+                        //           ),
+                        //         ),
+                        //         Expanded(
+                        //           flex: 3,
+                        //           child: Padding(
+                        //             padding: const EdgeInsets.all(5),
+                        //             child: Text(
+                        //                 '${_controller.gelenVeri.value.products[index].name}',
+                        //                 textAlign: TextAlign.center,
+                        //                 style: TextStyle(fontSize: 14)),
+                        //           ),
+                        //         ),
+                        //         Expanded(
+                        //           flex: 2,
+                        //           child: Padding(
+                        //             padding: const EdgeInsets.all(2),
+                        //             child: Row(
+                        //               mainAxisAlignment: MainAxisAlignment.center,
+                        //               children: [
+                        //                 Text(
+                        //                     '₺${_controller.gelenVeri.value.products[index].salePrice}',
+                        //                     textAlign: TextAlign.center,
+                        //                     style: TextStyle(
+                        //                         color: Colors.grey.shade700,
+                        //                         decoration:
+                        //                             TextDecoration.lineThrough,
+                        //                         decorationColor: Colors.black,
+                        //                         fontSize: 14,
+                        //                         fontWeight: FontWeight.w500)),
+                        //                 SizedBox(
+                        //                   width: 10,
+                        //                 ),
+                        //                 Text(
+                        //                     '₺${(double.parse(_controller.gelenVeri.value.products[index].salePrice) - (double.parse(_controller.gelenVeri.value.products[index].salePrice) * double.parse(_controller.gelenVeri.value.products[index].discount) / 100)).toStringAsFixed(2)}',
+                        //                     textAlign: TextAlign.center,
+                        //                     style: TextStyle(
+                        //                         fontSize: 16,
+                        //                         fontWeight: FontWeight.w500)),
+                        //               ],
+                        //             ),
+                        //           ),
+                        //         ),
+                        //         Expanded(
+                        //           flex: 3,
+                        //           child: Container(
+                        //             padding: const EdgeInsets.only(
+                        //                 bottom: 10, right: 10, left: 10),
+                        //             child: MaterialButton(
+                        //               minWidth:
+                        //                   MediaQuery.of(context).size.width * 0.5,
+                        //               color: HexColor('#18d26e'),
+                        //               onPressed: () => {
+                        //                 Fluttertoast.showToast(
+                        //                     msg:
+                        //                         "Ürün ID : ${_controller.gelenVeri.value.products[index].id} Sepete Eklendi",
+                        //                     toastLength: Toast.LENGTH_LONG,
+                        //                     gravity: ToastGravity.BOTTOM,
+                        //                     timeInSecForIosWeb: 1,
+                        //                     backgroundColor: Colors.greenAccent,
+                        //                     textColor: Colors.white,
+                        //                     fontSize: 16.0)
+                        //               },
+                        //               child: Text(
+                        //                 'Sepete Ekle',
+                        //                 style: TextStyle(color: Colors.white),
+                        //               ),
+                        //             ),
+                        //           ),
+                        //         )
+                        //       ],
+                        //     ),
+                        //   ),
+                        // ),
+                      )),
+                    ],
+                  ),
+                );
+        });
+  }
+}
